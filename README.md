@@ -1,4 +1,4 @@
-#Adversarial Autoencoder
+# Adversarial Autoencoder
 Implement [Adversarial Autoencoder](https://arxiv.org/pdf/1511.05644.pdf), you can see more detial in the paper
 ## Setting
 - Tensorflow 0.11
