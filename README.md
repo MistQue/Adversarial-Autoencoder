@@ -1,5 +1,5 @@
 # Variational Autoencoder
-Implement [Auto-Encoding Variational Bayes](https://arxiv.org/pdf/1312.6114.pdf), you can see more detial in the paper
+Implement [Adversarial Autoencoder](https://arxiv.org/pdf/1511.05644.pdf), you can see more detial in the paper
 ## Setting
 - Tensorflow 0.11
 - MNIST Dataset
@@ -7,9 +7,8 @@ Implement [Auto-Encoding Variational Bayes](https://arxiv.org/pdf/1312.6114.pdf)
 
 
 ## Result
-- z_dim = 2
+- z_dim = 50
 - Test on 5000 examples of MNIST Test Dataset
-- epoch = 100, minibatch = 100
 
-
+![mnist_test](Result/mnist_test.png)
 
