@@ -7,8 +7,8 @@ Implement [Adversarial Autoencoder](https://arxiv.org/pdf/1511.05644.pdf), you c
 
 
 ## Result
-- z_dim = 100
-- Test on 5000 examples of MNIST Test Dataset
+- z_dim = 2
+- Test on 3000 examples of MNIST Test Dataset
 
 ![mnist_test](Result/mnist_test.png)
 
