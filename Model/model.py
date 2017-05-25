@@ -1,11 +1,7 @@
-#! -*- coding:utf-8 -*-
-
 import os
 import sys
-
 import numpy as np
 import tensorflow as tf
-
 from encoder import Encoder
 from decoder import Decoder
 from discriminator import Discriminator
@@ -16,107 +12,106 @@ class Model(object):
         
         self.input_dim = input_dim
         self.z_dim = z_dim
-        self.lr = 0.001
+        self.rec_lr = 1e-3
+        self.gen_lr = 1e-3
+        self.disc_lr = 1e-3
+        self.mode = 'deterministic'
         
         # -- encoder -------
-        self.encoder = Encoder([input_dim, 600, 300, 100, z_dim])
+        self.encoder = Encoder([input_dim, 1000, 500, z_dim])
         
         # -- decoder -------
-        self.decoder = Decoder([z_dim, 100, 300, 600, input_dim])
+        self.decoder = Decoder([z_dim, 500, 1000, input_dim])
 
         # -- discriminator --
-        self.discriminator = Discriminator([z_dim, 300, 300, 100, 1])
+        self.discriminator = Discriminator([z_dim, 200, 100, 50, 1])
         
         
     def set_model(self):
 
         self.x = tf.placeholder(tf.float32, [None, self.input_dim])
+        self.z_real = tf.placeholder(dtype = tf.float32, shape = [None, self.z_dim])
         self.batch_size = tf.shape(self.x)[0]
         
-        mu, log_sigma = self.encoder.set_model(self.x, is_training = True)
+        # ----- Encoding -----
+        mu, log_sigma = self.encoder(self.x, is_training=True, reuse=False)
+        if self.mode == 'Non-deterministic':
+            eps = tf.random_normal([self.batch_size, self.z_dim])
+            z_fake = eps * tf.exp(log_sigma) + mu
+        elif self.mode == 'deterministic':
+            z_fake = mu
+        
+        
+        # ----- Decoding -----
+        rec_x = self.decoder(z_fake, is_training=True, reuse=False)
+               
+            
+        # ----- loss -----
+        reconstruct_error = 0.5 * tf.reduce_mean(tf.reduce_sum(tf.square(rec_x - self.x), 1))
 
-        eps = tf.random_normal([self.batch_size, self.z_dim])
-        z = eps * tf.exp(log_sigma) + mu
-
-        gen_data = self.decoder.set_model(z, is_training = True)
-        
-        
-        reconstruct_error = tf.reduce_mean(
-            tf.reduce_sum(tf.pow(gen_data - self.x, 2), [1]))
-        
-        aae_logits = self.discriminator.set_model(z, is_training = True)
-        
-        
-
-        d_loss_from_gen = tf.reduce_mean(
-            tf.nn.sigmoid_cross_entropy_with_logits(
-                logits = aae_logits,
-                targets = tf.zeros_like(aae_logits)))
-        
-        g_loss = tf.reduce_mean(
-            tf.nn.sigmoid_cross_entropy_with_logits(
-                logits = aae_logits,
-                targets = tf.ones_like(aae_logits)))
-
-    
-        # == for sharing variables ===
-        tf.get_variable_scope().reuse_variables()
-
-        # discriminator
-        self.z_input = tf.placeholder(dtype = tf.float32, shape = [None, self.z_dim])
-        disc_logits = self.discriminator.set_model(self.z_input, is_training = True)
+        real_logits = self.discriminator(self.z_real, is_training=True, reuse=False)
+        fake_logits = self.discriminator(z_fake, is_training=True, reuse=True)
         
         d_loss_from_real = tf.reduce_mean(
             tf.nn.sigmoid_cross_entropy_with_logits(
-                logits = disc_logits,
-                targets = tf.ones_like(disc_logits)))
+                logits=real_logits, 
+                labels=tf.ones_like(real_logits)))
+        
+        d_loss_from_fake = tf.reduce_mean(
+            tf.nn.sigmoid_cross_entropy_with_logits(
+                logits=fake_logits,
+                labels = tf.zeros_like(fake_logits)))
+        
+        g_loss = tf.reduce_mean(
+            tf.nn.sigmoid_cross_entropy_with_logits(
+                logits=fake_logits,
+                labels=tf.ones_like(fake_logits)))
 
-        # -- train -----
-        # update weights of autoencoder from reconstruct error
-        self.obj_aae = reconstruct_error
+        
+        # ----- train -----
+        self.obj_rec = reconstruct_error
         train_vars = self.encoder.get_variables()
         train_vars.extend(self.decoder.get_variables())
-        self.train_aae  = tf.train.AdamOptimizer(self.lr).minimize(self.obj_aae, var_list = train_vars)
+        self.train_rec  = tf.train.AdamOptimizer(self.rec_lr).minimize(self.obj_rec, var_list=train_vars)
 
-        # update weights of generator from discrimator 
         self.obj_gen = g_loss
         train_vars = self.encoder.get_variables()
-        self.train_gen  = tf.train.AdamOptimizer(self.lr).minimize(self.obj_gen, var_list = train_vars)
+        self.train_gen  = tf.train.AdamOptimizer(self.gen_lr).minimize(self.obj_gen, var_list=train_vars)
 
-        # update weights of discrimator 
-        self.obj_disc = d_loss_from_gen + d_loss_from_real
+
+        self.obj_disc =  d_loss_from_real + d_loss_from_fake
         train_vars = self.discriminator.get_variables()
-        self.train_disc  = tf.train.AdamOptimizer(self.lr).minimize(self.obj_disc, var_list = train_vars)
+        self.train_disc  = tf.train.AdamOptimizer(self.disc_lr).minimize(self.obj_disc, var_list=train_vars)
         
-        # -- for using ---------------------
-        self.mu, _  = self.encoder.set_model(self.x, is_training = False)
-        self.generate_data = self.decoder.set_model(self.z_input, is_training = False)
         
-    def training_aae(self, sess, data):
-        _, obj_aae = sess.run([self.train_aae, self.obj_aae],
-                                  feed_dict = {self.x: data})
-        return obj_aae
+        # -- for using ---------------------   
+        self.generate_z, _  = self.encoder(self.x, is_training=False, reuse=True)
+        self.generate_data = self.decoder(self.z_real, is_training=False, reuse=True)
+        
+    def training_rec(self, sess, data):
+        _, obj_rec = sess.run([self.train_rec, self.obj_rec], 
+                              feed_dict={self.x: data})
+        return obj_rec
         
     def training_gen(self, sess, data):
-        _, obj_gen = sess.run([self.train_gen, self.obj_gen],
-                                  feed_dict = {self.x: data})
+        _, obj_gen = sess.run([self.train_gen, self.obj_gen], 
+                              feed_dict={self.x: data})
         return obj_gen
     
     def training_disc(self, sess, data, p_z):
-        _, obj_disc = sess.run([self.train_disc, self.obj_disc],
-                                  feed_dict = {self.x: data,
-                                               self.z_input:p_z})
+        _, obj_disc = sess.run([self.train_disc, self.obj_disc], 
+                               feed_dict={self.x: data, self.z_real: p_z})
         return obj_disc
     
     def encoding(self, sess, data):
-        ret = sess.run(self.mu, feed_dict = {self.x: data})
+        ret = sess.run(self.generate_z, feed_dict={self.x: data})
         return ret
     
-    def gen_data(self, sess, z):
-        datas = sess.run(self.generate_data, feed_dict = {self.z_input: z})
-        return datas
+    def decoding(self, sess, z):
+        ret = sess.run(self.generate_data, feed_dict={self.z_real: z})
+        return ret
     
-if __name__ == u'__main__':
-    model = Model(28 * 28 * 1, 2)
+if __name__ == '__main__':
+    model = Model(784, 2)
     model.set_model()
     
