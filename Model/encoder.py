@@ -1,18 +1,13 @@
-#! -*- coding:utf-8 -*-
-
 import os
 import sys
 import numpy as np
 import tensorflow as tf
-
-from Util.util import linear_layer, get_dim
-from Util.batch_normalize import batch_norm
+from util import linear_layer, batch_norm
 
 class Encoder(object):
-    def __init__(self, layer_list, z_dim):
-        self.layer_list = layer_list[0:-1]
-        self.z_dim = layer_list[-1]        
-        self.name_scope = u'encoder'
+    def __init__(self, layer_list):
+        self.layer_list = layer_list     
+        self.name_scope = 'encoder'
   
     def get_variables(self):
         t_var = tf.trainable_variables()
@@ -22,19 +17,20 @@ class Encoder(object):
                 ret.append(var)
         return ret
     
-    def set_model(self, figs, is_training):        
-        h = data
-        with tf.variable_scope(self.name_scope):
-            for i, (in_dim, out_dim) in enumerate(zip(self.layer_list, self.layer_list[1:])):
+    def __call__(self, x, is_training, reuse):        
+        h = x     
+        with tf.variable_scope(self.name_scope, reuse=reuse):
+            for i, (in_dim, out_dim) in enumerate(zip(self.layer_list, self.layer_list[1:-1])):
                 h = linear_layer(h, in_dim, out_dim, i)
-                h = batch_norm(h, i, is_training)
+                h = batch_norm(h, i, is_training=is_training)
                 h = tf.nn.relu(h)
+                
+            mu = linear_layer(h, self.layer_list[-2], self.layer_list[-1], 'mu')
+            log_sigma = linear_layer(h, self.layer_list[-2], self.layer_list[-1], 'log_sigma')
+            
+            return mu, log_sigma
 
-            mu = linear_layer(h, self.layer_list[-1], self.z_dim, 'mu')
-            log_sigma = linear_layer(h, self.layer_list[-1], self.z_dim, 'log_sigma')
-        return mu, log_sigma
-    
-if __name__ == u'__main__':
-    e = Encoder([784, 1200, 600, 300, 100], 2)
+if __name__ == '__main__':
+    enc = Encoder([784, 1200, 600, 300, 100])
     data = tf.placeholder(tf.float32, [None, 784])
-    e.set_model(figs, True)
+    enc(data, True, False)
