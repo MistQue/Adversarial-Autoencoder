@@ -84,7 +84,7 @@ class Model(object):
         self.train_disc  = tf.train.AdamOptimizer(self.disc_lr).minimize(self.obj_disc, var_list=train_vars)
         
         
-        # -- for using ---------------------   
+        # ---- for using ----  
         self.generate_z, _  = self.encoder(self.x, is_training=False, reuse=True)
         self.generate_data = self.decoder(self.z_real, is_training=False, reuse=True)
         
