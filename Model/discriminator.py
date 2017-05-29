@@ -2,7 +2,7 @@ import os
 import sys
 import numpy as np
 import tensorflow as tf
-from util import linear_layer, batch_norm
+from util import linear_layer, batch_norm, lrelu
 
 class Discriminator(object):
     def __init__(self, layer_list):
@@ -23,8 +23,8 @@ class Discriminator(object):
         with tf.variable_scope(self.name_scope, reuse=reuse):
             for i, (in_dim, out_dim) in enumerate(zip(self.layer_list, self.layer_list[1:-1])):
                 h = linear_layer(h, in_dim, out_dim, i)
-                h = batch_norm(h, i, is_training=is_training)
-                h = tf.nn.relu(h)
+                #h = batch_norm(h, i, is_training=is_training)
+                h = lrelu(h)
                 
             ret = linear_layer(h, self.layer_list[-2], self.layer_list[-1], 'output')            
         return ret

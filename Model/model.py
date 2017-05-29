@@ -12,19 +12,22 @@ class Model(object):
         
         self.input_dim = input_dim
         self.z_dim = z_dim
-        self.rec_lr = 1e-3
-        self.gen_lr = 1e-3
-        self.disc_lr = 1e-3
+        self.enc_layer_list = [input_dim, 1000, 1000, z_dim]
+        self.dec_layer_list = [z_dim, 1000, 1000, input_dim]
+        self.disc_layer_list = [z_dim, 500, 500, 1]
+        self.rec_lr = 0.00005
+        self.gen_lr = 0.00002
+        self.disc_lr = 0.00002
         self.mode = 'deterministic'
         
         # -- encoder -------
-        self.encoder = Encoder([input_dim, 1000, 500, z_dim])
+        self.encoder = Encoder(self.enc_layer_list)
         
         # -- decoder -------
-        self.decoder = Decoder([z_dim, 500, 1000, input_dim])
+        self.decoder = Decoder(self.dec_layer_list)
 
         # -- discriminator --
-        self.discriminator = Discriminator([z_dim, 200, 100, 50, 1])
+        self.discriminator = Discriminator(self.disc_layer_list)
         
         
     def set_model(self):
@@ -72,16 +75,16 @@ class Model(object):
         self.obj_rec = reconstruct_error
         train_vars = self.encoder.get_variables()
         train_vars.extend(self.decoder.get_variables())
-        self.train_rec  = tf.train.AdamOptimizer(self.rec_lr).minimize(self.obj_rec, var_list=train_vars)
+        self.train_rec  = tf.train.RMSPropOptimizer(self.rec_lr, decay=0.5).minimize(self.obj_rec, var_list=train_vars)
 
         self.obj_gen = g_loss
         train_vars = self.encoder.get_variables()
-        self.train_gen  = tf.train.AdamOptimizer(self.gen_lr).minimize(self.obj_gen, var_list=train_vars)
+        self.train_gen  = tf.train.RMSPropOptimizer(self.gen_lr, decay=0.5).minimize(self.obj_gen, var_list=train_vars)
 
 
         self.obj_disc =  d_loss_from_real + d_loss_from_fake
         train_vars = self.discriminator.get_variables()
-        self.train_disc  = tf.train.AdamOptimizer(self.disc_lr).minimize(self.obj_disc, var_list=train_vars)
+        self.train_disc  = tf.train.RMSPropOptimizer(self.disc_lr, decay=0.5).minimize(self.obj_disc, var_list=train_vars)
         
         
         # ---- for using ----  
@@ -110,6 +113,19 @@ class Model(object):
     def decoding(self, sess, z):
         ret = sess.run(self.generate_data, feed_dict={self.z_real: z})
         return ret
+
+    def setting(self):      
+        setting = {'input_dim': self.input_dim,
+                   'input_dim': self.input_dim,
+                   'enc_layer_list': self.enc_layer_list, 
+                   'dec_layer_list': self.dec_layer_list,
+                   'disc_layer_list': self.disc_layer_list,
+                   'rec_lr': self.rec_lr,
+                   'gen_lr': self.gen_lr,
+                   'disc_lr': self.disc_lr,
+                   'mode': self.mode}
+        
+        return setting
     
 if __name__ == '__main__':
     model = Model(784, 2)

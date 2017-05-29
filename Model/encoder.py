@@ -2,7 +2,7 @@ import os
 import sys
 import numpy as np
 import tensorflow as tf
-from util import linear_layer, batch_norm
+from util import linear_layer, batch_norm, lrelu
 
 class Encoder(object):
     def __init__(self, layer_list):
@@ -23,7 +23,7 @@ class Encoder(object):
             for i, (in_dim, out_dim) in enumerate(zip(self.layer_list, self.layer_list[1:-1])):
                 h = linear_layer(h, in_dim, out_dim, i)
                 h = batch_norm(h, i, is_training=is_training)
-                h = tf.nn.relu(h)
+                h = lrelu(h)
                 
             mu = linear_layer(h, self.layer_list[-2], self.layer_list[-1], 'mu')
             log_sigma = linear_layer(h, self.layer_list[-2], self.layer_list[-1], 'log_sigma')
