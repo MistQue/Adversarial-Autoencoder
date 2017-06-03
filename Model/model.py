@@ -6,7 +6,6 @@ from encoder import Encoder
 from decoder import Decoder
 from discriminator import Discriminator
 
-
 class Model(object):
     def __init__(self, input_dim, z_dim):
         
@@ -15,9 +14,9 @@ class Model(object):
         self.enc_layer_list = [input_dim, 1000, 1000, z_dim]
         self.dec_layer_list = [z_dim, 1000, 1000, input_dim]
         self.disc_layer_list = [z_dim, 500, 500, 1]
-        self.rec_lr = 0.00005
-        self.gen_lr = 0.00002
-        self.disc_lr = 0.00002
+        self.rec_lr = 5e-5
+        self.gen_lr = 2e-5
+        self.disc_lr = 2e-5
         self.mode = 'deterministic'
         
         # -- encoder -------
@@ -28,7 +27,6 @@ class Model(object):
 
         # -- discriminator --
         self.discriminator = Discriminator(self.disc_layer_list)
-        
         
     def set_model(self):
 
@@ -116,7 +114,7 @@ class Model(object):
 
     def setting(self):      
         setting = {'input_dim': self.input_dim,
-                   'input_dim': self.input_dim,
+                   'z_dim': self.z_dim,
                    'enc_layer_list': self.enc_layer_list, 
                    'dec_layer_list': self.dec_layer_list,
                    'disc_layer_list': self.disc_layer_list,
