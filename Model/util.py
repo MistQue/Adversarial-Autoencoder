@@ -1,24 +1,12 @@
-#! -*- coding:utf-8 -*-
-
 import os
 import sys
-
 import tensorflow as tf
 import numpy as np
-from math import *
 
 
-def xavier_init(fan_in, fan_out, constant=1): 
-    """ Xavier initialization of network weights"""
-    # https://stackoverflow.com/questions/33640581/how-to-do-xavier-initialization-on-tensorflow
-    low = -constant*np.sqrt(6.0/(fan_in + fan_out)) 
-    high = constant*np.sqrt(6.0/(fan_in + fan_out))
-    
-    return tf.random_uniform((fan_in, fan_out), minval=low, maxval=high, dtype=tf.float32)
-
-def get_weights(name, shape, stddev, trainable=True):
+def get_weights(name, shape, trainable=True):
     return tf.get_variable('weights{}'.format(name), shape,
-                           initializer=tf.random_normal_initializer(stddev=stddev),
+                           initializer=tf.contrib.layers.xavier_initializer(),
                            trainable=trainable)
 
 def get_biases(name, shape, value, trainable=True):
@@ -36,17 +24,14 @@ def get_dim(target):
     return dim
 
 def linear_layer(x, in_dim, out_dim, l_id):
-    weights = tf.get_variable(str(l_id), shape=[in_dim, out_dim], trainable=True,
-                              initializer=tf.contrib.layers.xavier_initializer())
+    weights = get_weights(l_id, [in_dim, out_dim])
     biases  = get_biases(l_id, [out_dim], .0)
     return tf.matmul(x, weights) + biases
 
 def conv_layer(inputs, out_num, filter_width, filter_hight, stride, l_id):
-    
     # ** NOTICE: weight shape is [hight, width, in_chanel, out_chanel] **
     weights = get_weights(l_id,
-                          [filter_hight, filter_width, inputs.get_shape()[-1], out_num],
-                          0.02)
+                          [filter_hight, filter_width, inputs.get_shape()[-1], out_num])
     
     biases = get_biases(l_id, [out_num], 0.0)
     
@@ -61,8 +46,7 @@ def deconv_layer(inputs, out_shape, filter_width, filter_hight, stride, l_id):
     
     # ** NOTICE: weight shape is [hight, width, out_chanel, in_chanel] **
     weights = get_weights(l_id,
-                          [filter_hight, filter_width, out_shape[-1], inputs.get_shape()[-1]],
-                          0.02)
+                          [filter_hight, filter_width, out_shape[-1], inputs.get_shape()[-1]])
     
     biases = get_biases(l_id, [out_shape[-1]], 0.0)
     

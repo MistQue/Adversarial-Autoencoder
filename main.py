@@ -12,7 +12,7 @@ if __name__ == '__main__':
 
     # parameter
     batch_size = 200
-    epoch_num = 500
+    epoch_num = 300
     z_dim = 100
 
     save_path = os.getcwd() + '/Save_' + str(z_dim) 

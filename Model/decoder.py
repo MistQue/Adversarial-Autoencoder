@@ -10,12 +10,7 @@ class Decoder(object):
         self.name_scope = 'decoder'
 
     def get_variables(self):
-        t_var = tf.trainable_variables()
-        ret = []
-        for var in t_var:
-            if self.name_scope in var.name:
-                ret.append(var)
-        return ret
+       return tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.name_scope)
     
     def __call__(self, x, is_training, reuse):
         h = x
