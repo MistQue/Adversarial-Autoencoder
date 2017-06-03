@@ -4,7 +4,6 @@ import tensorflow as tf
 import numpy as np
 import time
 import json
-import matplotlib.pyplot as plt
 from Model.model import Model
 from tensorflow.examples.tutorials.mnist import input_data
 

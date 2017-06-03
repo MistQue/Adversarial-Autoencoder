@@ -31,27 +31,27 @@ class Model(object):
     def set_model(self):
 
         self.x = tf.placeholder(tf.float32, [None, self.input_dim])
-        self.z_real = tf.placeholder(dtype = tf.float32, shape = [None, self.z_dim])
+        self.p_z = tf.placeholder(dtype = tf.float32, shape = [None, self.z_dim])
         self.batch_size = tf.shape(self.x)[0]
         
-        # ----- Encoding -----
+        # ----- encoding -----
         mu, log_sigma = self.encoder(self.x, is_training=True, reuse=False)
         if self.mode == 'Non-deterministic':
             eps = tf.random_normal([self.batch_size, self.z_dim])
-            z_fake = eps * tf.exp(log_sigma) + mu
+            q_z = eps * tf.exp(log_sigma) + mu
         elif self.mode == 'deterministic':
-            z_fake = mu
+            q_z = mu
         
         
-        # ----- Decoding -----
-        rec_x = self.decoder(z_fake, is_training=True, reuse=False)
+        # ----- decoding -----
+        rec_x = self.decoder(q_z, is_training=True, reuse=False)
                
             
         # ----- loss -----
         reconstruct_error = 0.5 * tf.reduce_mean(tf.reduce_sum(tf.square(rec_x - self.x), 1))
 
-        real_logits = self.discriminator(self.z_real, is_training=True, reuse=False)
-        fake_logits = self.discriminator(z_fake, is_training=True, reuse=True)
+        real_logits = self.discriminator(self.p_z, is_training=True, reuse=False)
+        fake_logits = self.discriminator(q_z, is_training=True, reuse=True)
         
         d_loss_from_real = tf.reduce_mean(
             tf.nn.sigmoid_cross_entropy_with_logits(
@@ -86,8 +86,8 @@ class Model(object):
         
         
         # ---- for using ----  
-        self.generate_z, _  = self.encoder(self.x, is_training=False, reuse=True)
-        self.generate_data = self.decoder(self.z_real, is_training=False, reuse=True)
+        self.gen_z, _  = self.encoder(self.x, is_training=False, reuse=True)
+        self.gen_x = self.decoder(self.p_z, is_training=False, reuse=True)
         
     def training_rec(self, sess, data):
         _, obj_rec = sess.run([self.train_rec, self.obj_rec], 
@@ -101,15 +101,15 @@ class Model(object):
     
     def training_disc(self, sess, data, p_z):
         _, obj_disc = sess.run([self.train_disc, self.obj_disc], 
-                               feed_dict={self.x: data, self.z_real: p_z})
+                               feed_dict={self.x: data, self.p_z: p_z})
         return obj_disc
     
     def encoding(self, sess, data):
-        ret = sess.run(self.generate_z, feed_dict={self.x: data})
+        ret = sess.run(self.gen_z, feed_dict={self.x: data})
         return ret
     
     def decoding(self, sess, z):
-        ret = sess.run(self.generate_data, feed_dict={self.z_real: z})
+        ret = sess.run(self.gen_x, feed_dict={self.p_z: z})
         return ret
 
     def setting(self):      
